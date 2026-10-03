@@ -3,6 +3,8 @@ __pycache__/
 
 .vscode
 
+*.db
+
 .env
 
 .venv/
