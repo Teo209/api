@@ -9,3 +9,9 @@ class User(BaseModel):
 class UserResponse(BaseModel):
     name: str
     age: int
+    id: int
+
+class UserUpdate(BaseModel):
+    name: str | None = None
+    password: str | None = None
+    age: int | None = None
