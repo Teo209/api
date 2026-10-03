@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
+from database import get_connection
 from models import User, UserResponse, UserUpdate
 
 router = APIRouter(
@@ -7,8 +8,6 @@ router = APIRouter(
     tags=["Users"]
 )
 
-users = []
-current_user_id = 0
 
 @router.post(
     "/register",
@@ -17,15 +16,20 @@ current_user_id = 0
     description="Register a user, give name, password and age",
     status_code=status.HTTP_201_CREATED,
 )
-def register(user: User):
-    global current_user_id
-    current_user_id += 1
-    
-    usr = {"name": user.name, "password": user.password, "age": user.age, "id": (current_user_id)}
-    
-    users.append(usr)
-    
-    return usr
+def register_user(user: User):    
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("""
+            INSERT INTO users (name, age, password)
+            VALUES (?, ?, ?)           
+        """, (user.name, user.age, user.password)
+        )
+        
+        user_id = cursor.lastrowid
+        
+        usr = {"name": user.name, "password": user.password, "age": user.age, "id": (user_id)}    
+        
+        return usr
 
 
 @router.get(
@@ -36,7 +40,17 @@ def register(user: User):
     status_code=status.HTTP_200_OK,
 )
 def list_users():
-    return users
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM users")
+        
+        rows = cursor.fetchall()
+        
+        users = []
+        for user in rows:
+            users.append({"id": user[0], "name": user[1], "age": user[3]})
+        
+        return users
 
 
 @router.get(
@@ -47,9 +61,14 @@ def list_users():
     status_code=status.HTTP_200_OK,
 )
 def get_user(id: int):
-    for user in users:
-        if user["id"] == id:
-            return user
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM users WHERE id = ?", (id,))
+        
+        user = cursor.fetchone()
+        
+        if user is not None:
+            return {"id": user[0], "name": user[1], "age": user[3]}
     
     raise HTTPException(status.HTTP_404_NOT_FOUND, f"User {id} not found.")
 
@@ -62,18 +81,42 @@ def get_user(id: int):
     status_code=status.HTTP_200_OK,
 )
 def patch_user(id: int, user: UserUpdate):
-    usr = get_user(id)
+    name = user.name
+    age = user.age
+    password = user.password
     
-    if user.name is not None:
-        usr["name"] = user.name
+    if name is None and age is None and password is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No field to update.")
     
-    if user.password is not None:
-        usr["password"] = user.password
+    updates = []
+    values = []
     
-    if user.age is not None:
-        usr["age"] = user.age
+    if name is not None:
+        updates.append("name = ?")
+        values.append(name)
+
+    if age is not None:
+        updates.append("age = ?")
+        values.append(age)
+
+    if password is not None:
+        updates.append("password = ?")
+        values.append(password)
     
-    return usr
+    set_clause = ", ".join(updates)
+    
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        
+        cursor.execute(f"""
+            UPDATE users
+            SET {set_clause}
+            WHERE id = ?
+        """, (*values, id)
+        )
+
+        
+    return get_user(id)
 
 
 @router.delete(
@@ -86,6 +129,8 @@ def patch_user(id: int, user: UserUpdate):
 def delete_user(id: int):
     usr = get_user(id)
     
-    users.remove(usr)
-    
-    return usr
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM users WHERE id = ?", (id,))
+        
+        return usr
