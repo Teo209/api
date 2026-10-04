@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
+from pwdlib import PasswordHash
 
 from database import get_connection
 from models import User, UserResponse, UserUpdate
@@ -8,6 +9,7 @@ router = APIRouter(
     tags=["Users"]
 )
 
+PASSWORD_HASHER = PasswordHash.recommended()
 
 @router.post(
     "/register",
@@ -18,16 +20,18 @@ router = APIRouter(
 )
 def register_user(user: User):    
     with get_connection() as connection:
+        password = PASSWORD_HASHER.hash(user.password)
+        
         cursor = connection.cursor()
         cursor.execute("""
             INSERT INTO users (name, age, password)
             VALUES (?, ?, ?)           
-        """, (user.name, user.age, user.password)
+        """, (user.name, user.age, password)
         )
         
         user_id = cursor.lastrowid
         
-        usr = {"name": user.name, "password": user.password, "age": user.age, "id": (user_id)}    
+        usr = {"name": user.name, "age": user.age, "id": (user_id)}    
         
         return usr
 
@@ -101,7 +105,7 @@ def patch_user(id: int, user: UserUpdate):
 
     if password is not None:
         updates.append("password = ?")
-        values.append(password)
+        values.append(PASSWORD_HASHER.hash(user.password))
     
     set_clause = ", ".join(updates)
     

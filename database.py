@@ -33,7 +33,7 @@ def initialize_database():
 def print_database():
     with get_connection() as connection:
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM users;")
+        cursor.execute("SELECT * F  ROM users;")
 
         rows = cursor.fetchall()
 
