@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from pwdlib import PasswordHash
 
 from database import get_connection
-from models import User, UserResponse, UserUpdate
+from models import User, UserLogin, UserResponse, UserUpdate
 
 router = APIRouter(
     prefix="/users",
@@ -10,31 +10,6 @@ router = APIRouter(
 )
 
 PASSWORD_HASHER = PasswordHash.recommended()
-
-@router.post(
-    "/register",
-    response_model=UserResponse,
-    summary="register user",
-    description="Register a user, give name, password and age",
-    status_code=status.HTTP_201_CREATED,
-)
-def register_user(user: User):    
-    with get_connection() as connection:
-        password = PASSWORD_HASHER.hash(user.password)
-        
-        cursor = connection.cursor()
-        cursor.execute("""
-            INSERT INTO users (name, age, password)
-            VALUES (?, ?, ?)           
-        """, (user.name, user.age, password)
-        )
-        
-        user_id = cursor.lastrowid
-        
-        usr = {"name": user.name, "age": user.age, "id": (user_id)}    
-        
-        return usr
-
 
 @router.get(
     "",
@@ -75,6 +50,65 @@ def get_user(id: int):
             return {"id": user[0], "name": user[1], "age": user[3]}
     
     raise HTTPException(status.HTTP_404_NOT_FOUND, f"User {id} not found.")
+
+
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    summary="register user",
+    description="Register a user, give name, password and age",
+    status_code=status.HTTP_201_CREATED,
+)
+def register_user(user: User):    
+    with get_connection() as connection:
+        password = PASSWORD_HASHER.hash(user.password)
+        
+        cursor = connection.cursor()
+        cursor.execute("""
+            INSERT INTO users (name, age, password)
+            VALUES (?, ?, ?)           
+        """, (user.name, user.age, password)
+        )
+        
+        user_id = cursor.lastrowid
+        
+        usr = {"name": user.name, "age": user.age, "id": (user_id)}    
+        
+        return usr
+
+
+@router.post(
+    "/login",
+    response_model=UserResponse,
+    summary="login",
+    description="Login a user, username and password needed",
+    status_code=status.HTTP_200_OK,
+)
+def login_user(user: UserLogin):    
+    with get_connection() as connection:
+        name = user.name
+        password = user.password
+        
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT id, age, password
+            FROM users
+            WHERE name = ?
+        """, (name,)
+        )
+        
+        while (usr := cursor.fetchone()):
+            if PASSWORD_HASHER.verify(password, usr[2]):
+                user_id = usr[0]
+                age = usr[1]
+                break
+        else:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials!")
+        
+        
+        usr = {"name": name, "age": age, "id": user_id}    
+        
+        return usr
 
 
 @router.patch(
@@ -119,7 +153,6 @@ def patch_user(id: int, user: UserUpdate):
         """, (*values, id)
         )
 
-        
     return get_user(id)
 
 
