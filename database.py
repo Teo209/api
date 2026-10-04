@@ -24,10 +24,12 @@ def initialize_database():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
-                password TEXT,
-                age INTEGER
+                username TEXT UNIQUE,
+                email TEXT UNIQUE,
+                password TEXT
             )
-        """)
+            """
+        )
 
 
 def print_database():
@@ -38,3 +40,8 @@ def print_database():
         rows = cursor.fetchall()
 
         print(rows)
+
+
+if __name__ == "__main__":
+    initialize_database()
+    print_database()

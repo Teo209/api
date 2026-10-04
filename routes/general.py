@@ -4,7 +4,6 @@ router = APIRouter(
     tags=["General"]
 )
 
-
 @router.get("/", summary="root", description="Show status (always 'running' :D)")
 def root():
     return {"status": "running"}
@@ -32,5 +31,3 @@ def divide(a: float, b: float):
             status_code=status.HTTP_400_BAD_REQUEST, detail="b cannot be '0'"
         )
     return {"a": a, "b": b, "result": a / b}
-
-

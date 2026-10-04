@@ -1,23 +1,24 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
-class User(BaseModel):
-    name: str
+class UserRegister(BaseModel):
+    name: str = Field(min_length=1)
+    username: str = Field(min_length=3)
+    email: EmailStr
     password: str = Field(min_length=4)
-    age: int
 
 class UserResponse(BaseModel):
-    name: str
-    age: int
     id: int
-
+    name: str
+    username: str
+    email: EmailStr
 
 class UserLogin(BaseModel):
-    name: str
+    login: str | EmailStr
     password: str
 
-
 class UserUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(None, min_length=1)
+    username: str | None = Field(None, min_length=3)
+    email: EmailStr | None = None
     password: str | None = Field(None, min_length=4)
-    age: int | None = None
