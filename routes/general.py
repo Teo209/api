@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
-router = APIRouter(
-    tags=["General"]
-)
+router = APIRouter(tags=["General"])
+
 
 @router.get("/", summary="root", description="Show status (always 'running' :D)")
 def root():
